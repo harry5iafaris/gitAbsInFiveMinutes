@@ -18,9 +18,15 @@ public class git {
             init();
         } else if (args[0].equals("add")) {
             if (args.length < 2) {
-                System.out.println("");
+                System.out.println("Invalid Arguments: " + args[2]);
             } else {
                 add(args[1]);
+            }
+        } else if (args[0].equals("createTree")) {
+            if (args.length < 2) {
+                System.out.println("Invalid Arguments: " + args[2]);
+            } else {
+                createTree(args[1]);
             }
         }
     }
@@ -28,7 +34,7 @@ public class git {
     public static void init() {
         File gitFolder = new File("git");
         if (gitFolder.exists()) {
-            System.out.println("");
+            System.out.println("Git Repository Already Exists");
             return;
         }
         gitFolder.mkdir();
@@ -52,18 +58,18 @@ public class git {
 
     }
 
-    public static void add(String fileName) throws IOException {
-        byte[] fileContents = Files.readAllBytes(Path.of(fileName));
+    public static void add(String filePath) throws IOException {
+        byte[] fileContents = Files.readAllBytes(Path.of(filePath));
         List<String> indexLines = Files.readAllLines(Path.of("git", "INDEX"));
 
-        String filePath = "gitAbsInFiveMinutes/" + fileName;
+        filePath = "gitAbsInFiveMinutes/" + filePath;
 
         String hashValue = hashFile(fileContents);
         Path objectsPath = Path.of("git", "objects", hashValue);
         Path indexPath = Path.of("git", "INDEX");
 
         for (int lineNumber = 0; lineNumber < indexLines.size(); lineNumber++) {
-            if (indexLines.get(lineNumber).contains(fileName)) {
+            if (indexLines.get(lineNumber).contains(filePath)) {
                 if (indexLines.get(lineNumber).contains(hashValue)) {
                     return;
                 }
@@ -74,17 +80,58 @@ public class git {
 
         indexLines.add(hashValue + " " + filePath);
 
-        for (int i = 0; i < indexLines.size(); i++) {
-            if (i == indexLines.size() - 1) {
-                Files.writeString(indexPath, indexLines.get(i));
+        for (int lineNumber = 0; lineNumber < indexLines.size(); lineNumber++) {
+            if (lineNumber == indexLines.size() - 1) {
+                Files.writeString(indexPath, indexLines.get(lineNumber));
+            } else {
+                Files.writeString(indexPath, indexLines.get(lineNumber) + "\n");
             }
-            Files.writeString(indexPath, indexLines.get(i) + "\n");
-
         }
+
         Files.writeString(indexPath, String.join("\n", indexLines));
 
+        // StandardOpenOption.CREATE creates the file if it does not already exist
         Files.write(objectsPath, fileContents, StandardOpenOption.CREATE);
 
+    }
+
+    /*
+     * Generates a tree file containing references to all files and subdirectories
+     * in that directory
+     * Returns the SHA-1 hash of the generated tree
+     * (Currently only works for creating folders starting from the bottom)
+     */
+    public static String createTree(String directoryPath) throws IOException {
+        List<String> indexLines = Files.readAllLines(Path.of("git", "INDEX"));
+        StringBuilder childPaths = new StringBuilder();
+
+        directoryPath = "gitAbsInFiveMinutes/" + directoryPath;
+
+        for (int lineNumber = 0; lineNumber < indexLines.size(); lineNumber++) {
+            String line = indexLines.get(lineNumber);
+            if (line.contains(directoryPath)) {
+                // Is the path section of the line the same depth as the directoryPath => is it
+                // a folder or a file
+                if (line.substring(line.indexOf(" ") + 1, line.lastIndexOf("/")).equals(directoryPath)) {
+                    childPaths.append("blob " + line);
+                } else {
+                    childPaths.append("tree " + line);
+                }
+                if (lineNumber != indexLines.size() - 1) {
+                    childPaths.append("\n");
+                }
+                indexLines.remove(lineNumber);
+                lineNumber--;
+            }
+        }
+
+        String treeHash = hashFile(childPaths.toString().getBytes());
+
+        File tree = new File("git/objects/" + treeHash);
+
+        Files.write(tree.toPath(), childPaths.toString().getBytes(), StandardOpenOption.CREATE);
+
+        return treeHash;
     }
 
     public static String hashFile(byte[] input) {

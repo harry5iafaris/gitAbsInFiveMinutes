@@ -3,6 +3,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.commons.codec.digest.DigestUtils;
 
@@ -26,7 +27,13 @@ public class git {
             if (args.length < 2) {
                 System.out.println("Invalid Arguments: " + args[2]);
             } else {
-                createTree(args[1]);
+                createTree(args[1], null);
+            }
+        } else if (args[0].equals("rootTree")) {
+            if (args.length < 1) {
+                System.out.println("Invalid Arguments: " + args[1]);
+            } else {
+                rootTree();
             }
         }
     }
@@ -59,6 +66,10 @@ public class git {
     }
 
     public static void add(String filePath) throws IOException {
+        if (filePath.contains(" ")) {
+            System.out.println("Invalid character ' ' in path " + filePath);
+            return;
+        }
         byte[] fileContents = Files.readAllBytes(Path.of(filePath));
         List<String> indexLines = Files.readAllLines(Path.of("git", "INDEX"));
 
@@ -96,40 +107,72 @@ public class git {
     }
 
     /*
-     * Generates a tree file containing references to all files and subdirectories
-     * in that directory
-     * Returns the SHA-1 hash of the generated tree
-     * (Currently only works for creating folders starting from the bottom)
+     * Creates BLOBs for the entire repository stemming back to the root folder. Begins by sorting a
+     * copy of the index list, then
      */
-    public static String createTree(String directoryPath) throws IOException {
-        List<String> indexLines = Files.readAllLines(Path.of("git", "INDEX"));
+    public static String rootTree() throws IOException {
+        List<String> workingList = Files.readAllLines(Path.of("git", "INDEX"));
+        workingList.sort(Comparator.comparing(line -> line.split(" ")[1]));
+
+        while (workingList.size() > 1) {
+            int maxFileDepth = 0; // The max amount of "/" present in any line.
+            String deepestDirectoryPath = "gitAbsInFiveMinutes";
+            for (int line = 0; line < workingList.size(); line++) {
+                if (!(workingList.get(line).substring(0, 4).equals("blob")
+                        || workingList.get(line).substring(0, 4).equals("tree"))) {
+                    workingList.set(line, "blob " + workingList.get(line));
+                }
+                String[] lineParts = workingList.get(line).split(" "); // To handle / in a file name
+                int fileDepth = lineParts[lineParts.length - 1].split("/").length;
+                if (fileDepth > maxFileDepth) {
+                    maxFileDepth = fileDepth;
+                    deepestDirectoryPath = lineParts[2].substring(0, lineParts[2].lastIndexOf("/"));
+                }
+            }
+
+            String dirHash = createTree(deepestDirectoryPath, workingList);
+            workingList.add("tree " + dirHash + " " + deepestDirectoryPath);
+        }
+
+        String dirHash = createTree("gitAbsInFiveMinutes", workingList);
+        workingList.add("tree " + dirHash + " " + "gitAbsInFiveMinutes");
+
+        return workingList.get(0).split(" ")[1];
+    }
+
+    /*
+     * Generates a tree file containing references to all files and subdirectories in that directory
+     * Returns the SHA-1 hash of the generated tree
+     */
+    public static String createTree(String directoryPath, List<String> workingList)
+            throws IOException {
+        if (workingList == null) {
+            workingList = Files.readAllLines(Path.of("git", "INDEX"));
+        }
         StringBuilder childPaths = new StringBuilder();
 
-        directoryPath = "gitAbsInFiveMinutes/" + directoryPath;
-
-        for (int lineNumber = 0; lineNumber < indexLines.size(); lineNumber++) {
-            String line = indexLines.get(lineNumber);
+        for (int lineNumber = 0; lineNumber < workingList.size(); lineNumber++) {
+            String line = workingList.get(lineNumber);
             if (line.contains(directoryPath)) {
-                // Is the path section of the line the same depth as the directoryPath => is it
-                // a folder or a file
-                if (line.substring(line.indexOf(" ") + 1, line.lastIndexOf("/")).equals(directoryPath)) {
-                    childPaths.append("blob " + line);
-                } else {
-                    childPaths.append("tree " + line);
-                }
-                if (lineNumber != indexLines.size() - 1) {
+                childPaths.append(line);
+                if (lineNumber != workingList.size() - 1) {
                     childPaths.append("\n");
                 }
-                indexLines.remove(lineNumber);
+                workingList.remove(lineNumber);
                 lineNumber--;
             }
         }
 
-        String treeHash = hashFile(childPaths.toString().getBytes());
+        String treeContents = childPaths.toString();
+        if (treeContents.endsWith("\n")) {
+            treeContents = treeContents.substring(0, treeContents.length() - 1);
+        }
+
+        String treeHash = hashFile(treeContents.getBytes());
 
         File tree = new File("git/objects/" + treeHash);
 
-        Files.write(tree.toPath(), childPaths.toString().getBytes(), StandardOpenOption.CREATE);
+        Files.write(tree.toPath(), treeContents.getBytes(), StandardOpenOption.CREATE);
 
         return treeHash;
     }

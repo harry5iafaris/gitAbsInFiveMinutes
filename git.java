@@ -107,7 +107,8 @@ public class git {
     }
 
     /*
-     * Creates BLOBs for the entire repository stemming back to the root folder. Begins by sorting a
+     * Creates BLOBs for the entire repository stemming back to the root folder.
+     * Begins by sorting a
      * copy of the index list, then
      */
     public static String rootTree() throws IOException {
@@ -141,7 +142,8 @@ public class git {
     }
 
     /*
-     * Generates a tree file containing references to all files and subdirectories in that directory
+     * Generates a tree file containing references to all files and subdirectories
+     * in that directory
      * Returns the SHA-1 hash of the generated tree
      */
     public static String createTree(String directoryPath, List<String> workingList)
@@ -161,6 +163,26 @@ public class git {
                 workingList.remove(lineNumber);
                 lineNumber--;
             }
+        }
+
+        public static String commit(){
+            StringBuilder commit = new StringBuilder();
+
+            //add the hash of the tree
+            //call upon method from last class
+
+            //add the parent which is the previous commit
+            //this is from the last commit using getprevious in a linkedList
+
+            //add author
+
+            //call upon the author
+            //find the date
+
+            //search up these methods
+            return "";
+
+
         }
 
         String treeContents = childPaths.toString();

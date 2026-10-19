@@ -6,6 +6,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.commons.codec.digest.DigestUtils;
+import java.time.LocalDateTime;
 
 /*
  * USER NOTE: For all commands that you want to run, at the time of writing, the only way to do so
@@ -165,26 +166,6 @@ public class git {
             }
         }
 
-        public static String commit(){
-            StringBuilder commit = new StringBuilder();
-
-            //add the hash of the tree
-            //call upon method from last class
-
-            //add the parent which is the previous commit
-            //this is from the last commit using getprevious in a linkedList
-
-            //add author
-
-            //call upon the author
-            //find the date
-
-            //search up these methods
-            return "";
-
-
-        }
-
         String treeContents = childPaths.toString();
         if (treeContents.endsWith("\n")) {
             treeContents = treeContents.substring(0, treeContents.length() - 1);
@@ -197,6 +178,25 @@ public class git {
         Files.write(tree.toPath(), treeContents.getBytes(), StandardOpenOption.CREATE);
 
         return treeHash;
+    }
+
+    public static String commit() {
+        StringBuilder commit = new StringBuilder();
+
+        // add the hash of the tree
+        // call upon method from last class
+        commit.append();
+
+        // add the parent which is the previous commit
+        // this is from the last commit using getprevious in a linkedList
+
+        // add author
+
+        // find the date
+
+        // search up these methods
+        return "";
+
     }
 
     public static String hashFile(byte[] input) {

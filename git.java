@@ -191,7 +191,7 @@ public class git {
 
         // add the parent which is the previous commit
         // get the parent hash from the head
-        Path headPath = Path.of("git", "HEAD");
+        Path headPath = Path.of("git/HEAD");
         String parentHash = Files.readString(headPath);
         commit.append("parent: " + parentHash + "\n");
 
@@ -281,9 +281,33 @@ public class git {
     }
 
     public static void checkout(String commitHash) throws IOException {
+        // fix index
         recreateIndex(commitHash);
+
+        // fix head
+        Path headPath = Path.of("git/HEAD");
         Files.writeString(headPath, commitHash);
 
+        // recreate everything
+        Path indexPath = Path.of("git/INDEX");
+        String indexContent = Files.readString(indexPath);
+        String[] lines = indexContent.split("\n");
+        for (String line : lines) {
+            String parts[] = line.split(" ");
+            String blobHash = parts[0];
+            String relativePath = parts[1];
+
+            Path target = Path.of(relativePath);
+
+            // creates all directories above like mkdirs
+            if (target.getParent() != null) {
+                Files.createDirectories(target.getParent());
+            }
+
+            // write the content of the file
+            String content = Files.readString(Path.of("git/objects/" + blobHash));
+            Files.writeString(target, content);
+        }
     }
 
     public static String hashFile(byte[] input) {

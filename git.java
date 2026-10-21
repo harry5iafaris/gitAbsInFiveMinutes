@@ -1,4 +1,5 @@
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -180,22 +181,51 @@ public class git {
         return treeHash;
     }
 
-    public static String commit() {
+    public static String commit(String author, String message) throws IOException {
         StringBuilder commit = new StringBuilder();
 
         // add the hash of the tree
         // call upon method from last class
-        commit.append();
+        String treeHash = rootTree();
+        commit.append("tree: " + treeHash + "\n");
 
         // add the parent which is the previous commit
-        // this is from the last commit using getprevious in a linkedList
+        // get the parent hash from the head
+        Path headPath = Path.of("git", "HEAD");
+        String parentHash = Files.readString(headPath);
+        commit.append("parent: " + parentHash + "\n");
 
         // add author
+        commit.append("author: " + author + "\n");
 
-        // find the date
+        // find the date and time
+        LocalDateTime commitTime = LocalDateTime.now();
+        commit.append("date: " + commitTime.toString() + "\n");
 
-        // search up these methods
-        return "";
+        // add the message
+        commit.append("message: " + message);
+
+        // find commit hash
+        String commitString = commit.toString();
+        String commitHash = hashFile(commitString.getBytes());
+
+        // create the commit File
+        Path commitPath = Path.of("git/objects/" + commitHash);
+        try {
+            Files.writeString(commitPath, commitString);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        // write in the hash
+        try {
+            Files.writeString(headPath, commitHash);
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return commitHash;
 
     }
 

@@ -229,6 +229,57 @@ public class git {
 
     }
 
+    public static void recreateIndex(String commitHash) throws IOException {
+        // find the path to the commit
+        Path commitPath = Path.of("git/objects/" + commitHash);
+        String commitContent = Files.readString(commitPath);
+
+        // isolate the tree
+        String[] lines = commitContent.split("\n");
+        String treeLine = lines[0];
+        String treeHash = treeLine.substring(6);
+        String indexFileString = recursiveIndexRewriter(treeHash, "");
+
+        // find index file
+        Path indexPath = Path.of("git/INDEX");
+        Files.writeString(indexPath, indexFileString);
+        return;
+    }
+
+    public static String recursiveIndexRewriter(String treeHash, String currentPath) throws IOException {
+        // find file in objects folder
+        Path treePath = Path.of("git/objects/" + treeHash);
+
+        // put tree file into array
+        String treeContent = Files.readString(treePath);
+        String[] lines = treeContent.split("\n");
+
+        // create stringBuilder of the index file
+        StringBuilder sb = new StringBuilder();
+
+        // read objectFolder line by line
+        for (String line : lines) {
+            // check for blob
+            if (line.substring(0, 4).equals("blob")) {
+                String[] partsOfIndex = line.split(" ");
+                // checks so path doesn't start w /
+                if (!currentPath.equals("")) {
+                    sb.append(partsOfIndex[1] + " " + currentPath + "/" + partsOfIndex[2] + "\n");
+                } else {
+                    sb.append(partsOfIndex[1] + " " + partsOfIndex[2] + "\n");
+                }
+            } else {
+                String[] partsOfIndex = line.split(" ");
+                if (!currentPath.equals("")) {
+                    sb.append(recursiveIndexRewriter(partsOfIndex[1], currentPath + "/" + partsOfIndex[2]));
+                } else {
+                    sb.append(recursiveIndexRewriter(partsOfIndex[1], partsOfIndex[2]));
+                }
+            }
+        }
+        return sb.toString();
+    }
+
     public static String hashFile(byte[] input) {
         String hashValue = DigestUtils.sha1Hex(input);
         return hashValue;

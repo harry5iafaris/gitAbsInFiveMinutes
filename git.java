@@ -280,6 +280,12 @@ public class git {
         return sb.toString();
     }
 
+    public static void checkout(String commitHash) throws IOException {
+        recreateIndex(commitHash);
+        Files.writeString(headPath, commitHash);
+
+    }
+
     public static String hashFile(byte[] input) {
         String hashValue = DigestUtils.sha1Hex(input);
         return hashValue;

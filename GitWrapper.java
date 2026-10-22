@@ -62,9 +62,9 @@ public class GitWrapper {
      * @param commitHash The SHA1 hash of the commit to check out.
      * @throws IOException
      */
-    public void checkout(String commitHash) throws IOException {
+    public void checkout(String commitHash, String branchName) throws IOException {
         // to-do: implement functionality here
-        git.checkout(commitHash);
+        git.checkout(commitHash, branchName);
     }
 
 }

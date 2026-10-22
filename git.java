@@ -1,5 +1,4 @@
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -51,6 +50,16 @@ public class git {
         File objectsFolder = new File(gitFolder, "objects");
         objectsFolder.mkdir();
 
+        File refs = new File(gitFolder, "refs/heads");
+        refs.mkdir();
+
+        File main = new File(refs, "main");
+        try {
+            main.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
         File indexFile = new File(gitFolder, "INDEX");
         try {
             indexFile.createNewFile();
@@ -62,6 +71,12 @@ public class git {
         try {
             headFile.createNewFile();
         } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            Files.writeString(Path.of("git/HEAD"), "ref: refs/heads/main");
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
@@ -214,7 +229,6 @@ public class git {
         try {
             Files.writeString(commitPath, commitString);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
 
@@ -222,7 +236,6 @@ public class git {
         try {
             Files.writeString(headPath, commitHash);
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         return commitHash;
@@ -280,13 +293,10 @@ public class git {
         return sb.toString();
     }
 
-    public static void checkout(String commitHash) throws IOException {
+    public static void checkout(String commitHash, String branchName) throws IOException {
         // fix index
         recreateIndex(commitHash);
-
-        // fix head
-        Path headPath = Path.of("git/HEAD");
-        Files.writeString(headPath, commitHash);
+        checkoutBranch(branchName);
 
         // recreate everything
         Path indexPath = Path.of("git/INDEX");
@@ -308,6 +318,30 @@ public class git {
             String content = Files.readString(Path.of("git/objects/" + blobHash));
             Files.writeString(target, content);
         }
+    }
+
+    public static void createBranch(String branchName) throws IOException {
+        File newBranch = new File("git/refs/heads/" + branchName);
+        if (newBranch.exists()) {
+            throw new Error();
+        } else {
+            newBranch.createNewFile();
+        }
+        Path head = Path.of("git/HEAD");
+        String content = Files.readAllLines(head).get(0);
+        Files.writeString(newBranch.toPath(), content);
+        Files.writeString(head, "ref: refs/heads/" + branchName);
+        
+    }
+
+    public static void checkoutBranch(String branchName) throws IOException {
+        File branch = new File("git/refs/heads/" + branchName);
+        if (!branch.exists()) {
+            throw new Error();
+        }
+
+        Files.writeString(Path.of("git/HEAD"), "ref: refs/heads/" + branchName);
+
     }
 
     public static String hashFile(byte[] input) {

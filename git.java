@@ -51,7 +51,7 @@ public class git {
         objectsFolder.mkdir();
 
         File refs = new File(gitFolder, "refs/heads");
-        refs.mkdir();
+        refs.mkdirs();
 
         File main = new File(refs, "main");
         try {
@@ -296,7 +296,6 @@ public class git {
     public static void checkout(String commitHash, String branchName) throws IOException {
         // fix index
         recreateIndex(commitHash);
-        checkoutBranch(branchName);
 
         // recreate everything
         Path indexPath = Path.of("git/INDEX");
@@ -318,27 +317,52 @@ public class git {
             String content = Files.readString(Path.of("git/objects/" + blobHash));
             Files.writeString(target, content);
         }
+
+        Path headPath = Path.of("git/HEAD");
+        if (branchName != null) {
+            Path branch = Path.of("git/refs/heads/" + branchName);
+            if (!Files.exists(branch)) {
+                throw new Error();
+            }
+            Files.writeString(headPath, "ref: refs/heads/" + branchName);
+        } else {
+            Files.writeString(headPath, commitHash);
+        }
+
     }
 
-    public static void createBranch(String branchName) throws IOException {
-        File newBranch = new File("git/refs/heads/" + branchName);
-        if (newBranch.exists()) {
-            throw new Error();
-        } else {
-            newBranch.createNewFile();
-        }
+    public static void createBranch(String branchName) throws IOException { 
         Path head = Path.of("git/HEAD");
-        String content = Files.readAllLines(head).get(0);
-        Files.writeString(newBranch.toPath(), content);
-        Files.writeString(head, "ref: refs/heads/" + branchName);
-        
+        String content = Files.readString(head);
+        if (!content.substring(0, 5).equals("ref: ")) {
+            throw new Error();
+        }
+        Path branchPath = Path.of("git/" + content.substring(5));
+        if (!Files.exists(branchPath)) {
+            throw new Error();
+        }
+        String commitHash = Files.readString(branchPath);
+        if (commitHash.isEmpty()) {
+            throw new Error();
+        }
+        Path newBranch = Path.of("git/refs/heads/" + branchName);
+        if (Files.exists(newBranch)) {
+            throw new Error();
+        }
+        Files.writeString(newBranch, commitHash);
+
     }
 
     public static void checkoutBranch(String branchName) throws IOException {
-        File branch = new File("git/refs/heads/" + branchName);
-        if (!branch.exists()) {
+        Path branch = Path.of("git/refs/heads/" + branchName);
+        if (!Files.exists(branch)) {
             throw new Error();
         }
+        String commitHash = Files.readString(branch);
+        if (commitHash.isEmpty()) {
+            throw new Error();
+        }
+        checkout(commitHash, null);
 
         Files.writeString(Path.of("git/HEAD"), "ref: refs/heads/" + branchName);
 
